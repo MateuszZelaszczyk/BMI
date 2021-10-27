@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title> BMI&Calorie </title>
+    {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Zapraszam do korzystania z programu">
+    <link rel="stylesheet" type="text/css" href="{% static 'ProgInt/screen.css' %}">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.css" />
+</head>
+
+<body>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-2.3.2.min.js"></script>
+    {% load i18n %}
+    
+    <nav class="navigation">
+        <button class="navigation__mobile-button">
+            <img src="{% static 'images/navigation.svg' %}" alt="Otwórz/zamknij nawigację"
+                class="navigation__mobile-button-image">
+        </button>
+        
+        <ul class="navigation__menu">
+            <li class="navigation__menu-item">
+                <a href="#" class="link">{%trans 'Strona główna' %}</a>
+            </li>
+            <li class="navigation__menu-item">
+                <a href="#aboutme" class="link">{%trans 'O mnie' %}</a>
+            </li>
+            <li class="navigation__menu-item">
+                <a href="#InBMI" class="link">{%trans 'Kalkulator BMI' %}</a>
+            </li>
+            <li class="navigation__menu-item">
+                <a href="#runtm" class="link">{%trans 'Oblicz tempo biegu' %}</a>
+            </li>
+
+        </ul>
+        <form action="{% url 'set_language' %}" method="POST" class="lang_form" >
+            {%csrf_token%}
+            <input type="hidden" name="text" value="{{redirect_to}}">
+            <select name="language" id="lang" class="lang_sel">
+                {% get_available_languages as LANGUAGES %}
+                {% get_language_info_list for LANGUAGES as languages %}
+                {% for language in languages %}
+                    <option class="lang_sel" value="{{language.code}}" {% if language.code == LANGUAGE_CODE %} selected{%endif%}>
+                        {{ language.name_local}} ({{language.code}})
+                    </option>
+                {%endfor%}
+            </select>
+            <input type="submit" class="lang_but" value="Go"> 
+        </form>
+
+    </nav>
+    <script type="text/javascript" src=" {%static 'JS/menu.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.js" data-cfasync="false"></script>
+
+    <h3 class="opis_prog"> {% trans 'Witam na stronie poświęconej dobremu odżywianiu oraz aktywnemu trybowi życia.' %}</h3>
+    <div class="about_me" id="about_me">
+
+        <p class="para_me">{% trans 'Nazywam się Mateusz Żelaszczyk i jestem studentem III roku Informatyki na SGGW. Strona ta powstała ze względu na moje zainteresowanie zdrowym trybem życia oraz sportem: bieganiem i kolarstwem (zarówno górskim jak i szosowym). Znajdziesz tutaj kalkulator indeksu BMI oraz kalkulator tempa biegu.' %}
+        </p>
+    </div>
+    <div class="main">
+        <div class="form" id="InBMI">
+            <form class="BMI" method="POST" action="{% url 'licz' %}">
+                {%csrf_token%}
+                <label class="opis">{%trans 'Wybierz płeć:' %}</label><label class="opis"> <input required type="radio" name="plec"
+                        value="M" class="gender">{%trans 'Mężczyzna' %}</label>
+                <label class="opis"><input type="radio" name="plec" value="K" class="gender"> {%trans 'Kobieta' %}</label>
+
+                <label class="opis">{% trans 'Waga:' %}</label><input required placeholder="{% trans 'Podaj wartość(kg)' %}" type="number"
+                    name="waga" step="0.1" min="1" class="weight">
+
+                <label class="opis">{% trans 'Wzrost:' %}</label><input required placeholder="{% trans 'Podaj wartość(cm)' %}" type="number"
+                    name="wzrost" step="0.1" min="1" class="height">
+
+                <label class="opis">{%trans 'Wiek:' %}</label><input required placeholder="{% trans 'Podaj wartość(lata)' %}" type="number"
+                    name="wiek" step="1" min="1" class="weight">
+                <button type="submit" class="policz">{% trans 'Oblicz' %}</button>
+
+            </form>
+        </div>
+
+        <div class="wynik">
+            <h2 class="wynik__header">{% trans 'Rezultaty' %}</h2>
+            {% if bmi %}
+            <p class="wynik__BMI">{% trans 'Twój wskaźnik BMI wynosi:' %}
+            <p class="w__BMI"> {{bmi}} - {{state}}</p>
+            </p>
+            <h4 class="tytul">{% trans 'Wykres przedstawiający zapotrzebowanie kaloryczne, by utrzymać wagę w zależności od aktywności' %}
+            </h4>
+            <div class="wynik__wykres">{{div| safe}}</div>
+
+            <button type="submit" class="wynik__reset" method="POST" onclick="location.href=''">{% trans 'Reset' %}</button>
+            {%else%}
+            <h2 class="wynik__header">{% trans 'Tutaj zobaczysz swoje BMI' %}</h2>
+            <img class="bmi_img" src="{%static 'images/bmi.svg' %}" alt="">
+            {%endif%}
+        </div>
+
+    </div>
+    <div class="tmprun">
+        <div class="form" id="runtm">
+            <h3 class="tmp_head">{% trans 'Tutaj obliczysz tempo swojego biegu' %}</h3>
+            {% block content %}
+            <form class="Tempo" method="POST" action="{% url 'tempob'  %}">
+                {%csrf_token%}
+                {{ form.as_p }}
+                <label class="opis2">{% trans 'Dystans biegu:' %}</label>
+                <section class="dyst_section"><input required placeholder="Km" type="number" id="dyst_km" name="dyst_km"
+                        step="1" min="0" class="dystans">
+                    <input required placeholder="m" type="number" id="dyst_m" name="dyst_m" step="1" min="0" max="1000"
+                        class="dystans">
+                </section>
+
+                <label class="opis2">{% trans 'Czas pokonania dystansu:' %}</label>
+                <section class="time_section"><input required placeholder="HH" type="number" name="time_h" id="time_h"
+                        step="1" min="0" class="time">:
+                    <input required placeholder="mm" type="number" name="time_m" id="time_m" step="1" min="0" max="59"
+                        class="time">:
+                    <input required placeholder="ss" type="number" name="time_s" id="time_s" step="1" min="0" max="59"
+                        class="time">
+                </section>
+                <button type="submit" class="oblicz">{% trans 'Oblicz' %}</button>
+            </form>
+            {% endblock %}
+        </div>
+        <div class="wtempom">
+            {% if tempo %}
+            <p class="tempo_p">{% trans 'Twoje tempo to:' %} {{tempo}} m/km</p>
+            <p class="tempo_p">{% trans 'Twoja średnia prędkość:' %} {{speed}} km/h</p>
+            {%endif%}
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <a class="copy">
+            {% trans '©2021 Mateusz Żelaszczyk-Wszelkie prawa zastrzeżone' %}
+        </a>
+        <div class="footer__links">
+            <a href="https://facebook.com" target="_blank" class="footer__link">
+                <img src="{% static 'images/facebook.svg' %}" alt="Facebook" class="social-icon"> &nbsp; Facebook
+            </a>
+            <a href="https://instagram.com" target="_blank" class="footer__link">
+                <img src="{% static 'images/instagram.svg' %}" alt="Instagram" class="social-icon"> &nbsp; Instagram
+            </a>
+        </div>
+    </footer>
+    <script>window.cookieconsent.initialise({
+        "palette": {
+          "popup": {
+            "background": "#efefef",
+            "text": "#404040"
+          },
+          "button": {
+            "background": "#8ec760",
+            "text": "#ffffff"
+          }
+        },
+        "theme": "edgeless",
+        "position": "bottom-left",
+        "content": {
+          "message": "Używamy plików cookie, aby poprawić jakość przeglądania naszej witryny.",
+          "dismiss": "Akceptuj!"
+        }
+      });</script>
+</body>
+{{script| safe}}
+
+
+</html>
